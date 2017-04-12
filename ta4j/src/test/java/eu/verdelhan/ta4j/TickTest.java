@@ -32,6 +32,7 @@ import org.junit.Test;
 public class TickTest {
 
     private Tick tick;
+    private Tick lazyTick;
 
     private DateTime beginTime;
 
@@ -42,6 +43,7 @@ public class TickTest {
         beginTime = new DateTime(2014, 6, 25, 0, 0);
         endTime = new DateTime(2014, 6, 25, 1, 0);
         tick = new Tick(Period.hours(1), endTime);
+        lazyTick = new Tick(Period.hours(1));
     }
 
     @Test
@@ -80,5 +82,51 @@ public class TickTest {
 
         assertTrue(tick.inPeriod(beginTime));
         assertFalse(tick.inPeriod(endTime));
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testLazyTickNoEndTimeInitToString(){
+        lazyTick.toString();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testLazyTickNoEndTimeInitGetDateName(){
+        lazyTick.getDateName();
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testLazyTickNoEndTimeInitGetSimpleDateName(){
+        lazyTick.getSimpleDateName();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testLazyTickNoEndTimeInitInPeriod(){
+        lazyTick.inPeriod(null);
+    }
+
+    @Test
+    public void testLazyTickNoEndTimeInit(){
+        assertNull(lazyTick.getEndTime());
+        assertNull(lazyTick.getBeginTime());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testLazyTickAddTradeIllegalArgument(){
+        lazyTick.addTrade(null, Decimal.valueOf(0), Decimal.valueOf(100));
+    }
+
+    @Test
+    public void testLazyTickAddTrade(){
+        
+        DateTime endTime0 = DateTime.now();
+        lazyTick.addTrade(endTime0, Decimal.valueOf(0.15d), Decimal.valueOf(1.102));
+        assertNotNull(lazyTick.getEndTime());
+        assertNotNull(lazyTick.getBeginTime());
+
+        // verify endtime is successfully updated
+        DateTime endTime1 = endTime0.plusSeconds(5);
+        lazyTick.addTrade(endTime1, Decimal.valueOf(0.15d), Decimal.valueOf(1.102));
+        assertNotNull(lazyTick.getEndTime());
+        assertEquals(endTime1, lazyTick.getEndTime());
     }
 }

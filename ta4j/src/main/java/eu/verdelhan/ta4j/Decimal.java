@@ -22,6 +22,9 @@
  */
 package eu.verdelhan.ta4j;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -36,6 +39,7 @@ import java.math.RoundingMode;
  * @see MathContext
  * @see RoundingMode
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class Decimal implements Comparable<Decimal>, Serializable {
 
 	private static final long serialVersionUID = 2225130444465033658L;
@@ -87,8 +91,8 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
-    private Decimal(BigDecimal val) {
-        delegate = val;
+    private Decimal(@JsonProperty("delegate") BigDecimal delegate) {
+        this.delegate = delegate;
     }
 
     /**
@@ -388,7 +392,7 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
 
     @Override
     public String toString() {
-        if (this == NaN) {
+        if (this == NaN || delegate == null) {
             return "NaN";
         }
         return delegate.toString();
@@ -441,5 +445,13 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
 
     public static Decimal valueOf(long val) {
         return new Decimal(val);
+    }
+    
+    public static Decimal valueOf(BigDecimal bd){
+        return new Decimal(bd);
+    }
+
+    public BigDecimal getDelegate() {
+        return delegate;
     }
 }

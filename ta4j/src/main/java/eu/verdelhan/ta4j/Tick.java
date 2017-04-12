@@ -25,6 +25,9 @@ package eu.verdelhan.ta4j;
 
 import java.io.Serializable;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.joda.time.DateTime;
 import org.joda.time.Days;
 import org.joda.time.Period;
@@ -33,6 +36,7 @@ import org.joda.time.Period;
  * End tick of a time period.
  * <p>
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Tick implements Serializable {
 
 	private static final long serialVersionUID = 8038383777467488147L;
@@ -61,12 +65,58 @@ public class Tick implements Serializable {
      * Constructor.
      * @param timePeriod the time period
      * @param endTime the end time of the tick period
+     * @param openPrice the open price of the tick period
+     * @param maxPrice the highest price of the tick period
+     * @param minPrice the lowest price of the tick period
+     * @param closePrice the close price of the tick period
+     * @param volume the volume of the tick period
+     */
+    public Tick(@JsonProperty("timePeriod") Period timePeriod,
+                @JsonProperty("endTime") DateTime endTime,
+                @JsonProperty("beginTime")DateTime beginTime,
+                @JsonProperty("openPrice") Decimal openPrice,
+                @JsonProperty("maxPrice") Decimal maxPrice,
+                @JsonProperty("minPrice") Decimal minPrice,
+                @JsonProperty("closePrice") Decimal closePrice,
+                @JsonProperty("volume") Decimal volume,
+                @JsonProperty("amount") Decimal amount,
+                @JsonProperty("trades") int trades) {
+        checkTimeArguments(timePeriod, endTime);
+        this.timePeriod = timePeriod;
+        this.endTime = endTime;
+        this.beginTime = endTime.minus(timePeriod);
+        this.openPrice = openPrice;
+        this.maxPrice = maxPrice;
+        this.minPrice = minPrice;
+        this.closePrice = closePrice;
+        this.volume = volume;
+        this.amount = amount;
+        this.trades = trades;
+    }
+
+    /**
+     * Constructor.
+     * @param timePeriod the time period
+     * @param endTime the end time of the tick period
      */
     public Tick(Period timePeriod, DateTime endTime) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
         this.beginTime = endTime.minus(timePeriod);
+    }
+
+    /**
+     * Sometimes the 'endTime' is not known until the first Trade has been hadded.
+     * 
+     * This constructor builds a 'lazy' Tick using only the time period, delegating to the user the responsibility 
+     * of properly setting the end time once the first trade is available,
+     * using {@link Tick#addTrade(DateTime, Decimal, Decimal)}.
+     * 
+     * @param timePeriod the time period
+     */
+    public Tick(Period timePeriod){
+        this.timePeriod = timePeriod;
     }
 
     /**
@@ -126,7 +176,13 @@ public class Tick implements Serializable {
      * @param closePrice the close price of the tick period
      * @param volume the volume of the tick period
      */
-    public Tick(Period timePeriod, DateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
+    public Tick(Period timePeriod, 
+                DateTime endTime, 
+                Decimal openPrice, 
+                Decimal highPrice, 
+                Decimal lowPrice, 
+                Decimal closePrice, 
+                Decimal volume) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
@@ -204,6 +260,7 @@ public class Tick implements Serializable {
      * @param tradePrice the price
      */
     public void addTrade(Decimal tradeAmount, Decimal tradePrice) {
+        checkTimeArguments(timePeriod, endTime);
         if (openPrice == null) {
             openPrice = tradePrice;
         }
@@ -222,6 +279,24 @@ public class Tick implements Serializable {
         amount = amount.plus(tradeAmount);
         volume = volume.plus(tradeAmount.multipliedBy(tradePrice));
         trades++;
+    }
+
+    /**
+     * Adds a trade to the tick, passing the andTime as an additional parameter.
+     * If the provided endTime is grater than the endTime of the Tick, the Tick endTime is updated.
+     * 
+     * @param endTime the end time of the tick period
+     * @param tradeAmount the tradable amount
+     * @param tradePrice the price
+     */
+    public void addTrade(DateTime endTime, Decimal tradeAmount, Decimal tradePrice){
+        checkTimeArguments(timePeriod, endTime);
+        if (this.endTime == null || endTime.isAfter(this.endTime)){
+            this.endTime = endTime;
+            this.beginTime = endTime.minus(timePeriod);
+        } 
+        
+        addTrade(tradeAmount, tradePrice);
     }
 
     /**
@@ -254,6 +329,7 @@ public class Tick implements Serializable {
 
     @Override
     public String toString() {
+        checkTimeArguments(this.timePeriod, this.endTime);
         return String.format("[time: %1$td/%1$tm/%1$tY %1$tH:%1$tM:%1$tS, close price: %2$f]",
                 endTime.toGregorianCalendar(), closePrice.toDouble());
     }
@@ -263,6 +339,7 @@ public class Tick implements Serializable {
      * @return true if the provided timestamp is between the begin time and the end time of the current period, false otherwise
      */
     public boolean inPeriod(DateTime timestamp) {
+        checkTimeArguments(this.timePeriod, this.endTime);
         return timestamp != null
                 && !timestamp.isBefore(beginTime)
                 && timestamp.isBefore(endTime);
@@ -286,6 +363,7 @@ public class Tick implements Serializable {
      * @return a human-friendly string of the end timestamp
      */
     public String getDateName() {
+        checkTimeArguments(this.timePeriod, this.endTime);
         return endTime.toString("hh:mm dd/MM/yyyy");
     }
 
@@ -293,6 +371,7 @@ public class Tick implements Serializable {
      * @return a even more human-friendly string of the end timestamp
      */
     public String getSimpleDateName() {
+        checkTimeArguments(this.timePeriod, this.endTime);
         return endTime.toString("dd/MM/yyyy");
     }
 
